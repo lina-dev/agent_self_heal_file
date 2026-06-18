@@ -2,7 +2,7 @@
 
 ![Audio Repair — agentic workflow](agents.png)
 
-A production-style **agentic workflow that recovers corrupted audio/video files
+A production **agentic workflow that recovers corrupted audio/video files
 `ffmpeg` can't decode straight off.** It validates and classifies an incoming
 file, tries a deterministic fast-path (stream-copy remux) first, and only then
 escalates to a **constrained LLM agent** that emits typed, allow-listed tool
@@ -59,10 +59,8 @@ infra/         Terraform: ECR, SNS, SQS+DLQ, ECS Fargate, IAM (GitHub OIDC), aut
 # Prereqs: Python 3.12, ffmpeg/ffprobe on PATH (brew install ffmpeg)
 make venv          # .venv + install package + dev deps
 
-# Local LLM (small Qwen on CPU via Ollama's OpenAI-compatible API)
-ollama pull qwen2.5:3b-instruct
+# Local LLM (
 export LLM_BASE_URL=http://localhost:11434/v1
-export LLM_MODEL=qwen2.5:3b-instruct
 
 make test          # full offline suite (LLM mocked) — deterministic
 ```
