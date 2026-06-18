@@ -1,3 +1,4 @@
+import os
 import shutil
 
 import boto3
@@ -9,7 +10,7 @@ from audio_repair.llm.client import LLMResponse
 
 HAS_FFMPEG = shutil.which("ffmpeg") and shutil.which("ffprobe")
 
-BUCKET = "cli-eval-bucket"
+BUCKET = os.environ.get("S3_OUTPUT_BUCKET") or "cli-eval-bucket"
 
 
 class StubLLM:

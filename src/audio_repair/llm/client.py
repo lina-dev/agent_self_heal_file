@@ -10,6 +10,7 @@ from a small model may be malformed JSON; we tolerate that (mark the call
 from __future__ import annotations
 
 import json
+import os
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -71,19 +72,31 @@ def _parse_arguments(raw: Any) -> tuple[dict, bool]:
 class LLMClient:
     """Thin typed wrapper over an OpenAI-compatible chat-completions endpoint."""
 
-    def __init__(self, settings: Settings):
+    def __init__(self, settings: Settings | None = None, env: Any = None):
         self.settings = settings
+        # LLM backend identity comes straight from the environment, not Settings
+        # (LLM_BASE_URL / LLM_MODEL as GitHub variables, LLM_API_KEY as a secret).
+        env = os.environ if env is None else env
+        self.base_url = env.get("LLM_BASE_URL") or None
+        self.model = env.get("LLM_MODEL") or None
+        self.api_key = env.get("LLM_API_KEY") or None
         self._client: Any = None  # lazily constructed so unit tests can inject
 
     def _ensure_client(self) -> Any:
         if self._client is None:
+            if not self.base_url or not self.model:
+                raise LLMError(
+                    "LLM backend not configured: set LLM_BASE_URL and LLM_MODEL "
+                    "(e.g. http://localhost:11434/v1 and qwen2.5:3b-instruct for "
+                    "local Ollama, or your vLLM endpoint/model in production)."
+                )
             try:
                 from openai import OpenAI
             except ImportError as e:  # pragma: no cover - dep is declared
                 raise LLMError("openai package not installed") from e
             self._client = OpenAI(
-                base_url=self.settings.llm_base_url,
-                api_key=self.settings.llm_api_key or "not-needed",
+                base_url=self.base_url,
+                api_key=self.api_key or "not-needed",
             )
         return self._client
 
@@ -95,7 +108,7 @@ class LLMClient:
     ) -> LLMResponse:
         client = self._ensure_client()
         kwargs: dict[str, Any] = {
-            "model": self.settings.llm_model,
+            "model": self.model,
             "messages": messages,
             "max_tokens": max_tokens,
             "temperature": 0,

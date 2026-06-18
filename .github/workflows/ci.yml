@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    # Infra identifiers are injected from GitHub repository variables into the
+    # job environment (Settings → Secrets and variables → Actions → Variables),
+    # where the app reads them via Settings/_ENV_MAP (os.environ). They are
+    # non-secret placeholders; the suite falls back to safe defaults when a
+    # variable is unset, so the build is green out of the box.
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+      AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+      PROCESSING_TOPIC_ARN: ${{ vars.PROCESSING_TOPIC_ARN }}
+      REPAIR_TOPIC_ARN: ${{ vars.REPAIR_TOPIC_ARN }}
+      S3_OUTPUT_BUCKET: ${{ vars.S3_OUTPUT_BUCKET }}
+      # LLM backend: non-secret endpoint/model as variables, key as a secret.
+      LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}
+      LLM_MODEL: ${{ vars.LLM_MODEL }}
+      LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Install package + dev deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run tests
+        run: pytest -q --cov=audio_repair --cov-report=term-missing

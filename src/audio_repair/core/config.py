@@ -12,12 +12,10 @@ _ENV_MAP = {
     "agent_max_iterations": "AGENT_MAX_ITERATIONS",
     "agent_wall_clock_timeout_s": "AGENT_WALL_CLOCK_TIMEOUT_S",
     "agent_max_tool_calls": "AGENT_MAX_TOOL_CALLS",
-    "agent_max_tokens": "AGENT_MAX_TOKENS",
+    "agent_max_output_tokens": "AGENT_MAX_OUTPUT_TOKENS",
+    "agent_token_budget": "AGENT_TOKEN_BUDGET",
     "max_duration_s": "MAX_DURATION_S",
     "intake_repeat": "INTAKE_REPEAT",
-    "llm_base_url": "LLM_BASE_URL",
-    "llm_model": "LLM_MODEL",
-    "llm_api_key": "LLM_API_KEY",
     "processing_topic_arn": "PROCESSING_TOPIC_ARN",
     "repair_topic_arn": "REPAIR_TOPIC_ARN",
     "aws_region": "AWS_REGION",
@@ -40,19 +38,23 @@ class Settings(BaseModel):
     ffmpeg_tool_timeout_s: int = 60
 
     # agent safety guards
-    agent_max_iterations: int = 6
+    agent_max_iterations: int = 20
     agent_wall_clock_timeout_s: int = 120
     agent_max_tool_calls: int = 12
-    agent_max_tokens: int = 4096
+    # Per-completion output ceiling: tool-call JSON is tiny, so this only needs
+    # to be large enough for one tool call plus brief reasoning.
+    agent_max_output_tokens: int = 8000
+    # Cumulative completion-token budget across the whole repair: a cost/abuse
+    # fence, not a context-window limit. Exhausting it means "give up".
+    agent_token_budget: int = 32000
 
     # intake policy
     max_duration_s: int = 10800  # 3h
     intake_repeat: int = 1
 
-    # LLM backend (OpenAI-compatible; Ollama/llama.cpp local, vLLM prod)
-    llm_base_url: str = "http://localhost:11434/v1"
-    llm_model: str = "qwen2.5:3b-instruct"
-    llm_api_key: str = "not-needed"
+    # NOTE: the LLM backend (base url / model / api key) is intentionally NOT
+    # part of Settings. It is read directly from the environment by LLMClient
+    # (LLM_BASE_URL, LLM_MODEL as GitHub variables; LLM_API_KEY as a secret).
 
     # AWS
     processing_topic_arn: str = ""
@@ -71,5 +73,8 @@ def get_settings(env: Mapping[str, str] | None = None) -> Settings:
     cannot be coerced to its field type.
     """
     env = os.environ if env is None else env
-    data = {field: env[var] for field, var in _ENV_MAP.items() if var in env}
+    # Skip missing *and* empty values: an unset GitHub Actions variable/secret
+    # (`${{ vars.X }}`) arrives as an empty string, which must not clobber a
+    # sensible default (e.g. the localhost LLM base url).
+    data = {field: env[var] for field, var in _ENV_MAP.items() if env.get(var)}
     return Settings(**data)

@@ -84,13 +84,27 @@ def test_no_progress_identical_call():
 
 def test_stops_at_max_iterations():
     # Distinct, valid-but-unhelpful calls each round; never succeeds, no decode errors.
-    responses = [_resp("inspect_bytes", {"n": i}) for i in range(20)]
+    # Raise the tool-call cap so the *iteration* guard is the binding constraint.
+    s = S.model_copy(update={"agent_max_tool_calls": 1000})
+    responses = [_resp("inspect_bytes", {"n": i}) for i in range(s.agent_max_iterations)]
     llm = ScriptedLLM(responses)
     registry = StubRegistry({"inspect_bytes": {"ok": True, "size": 10}})
-    out = run_agent(llm, registry, StubFt(verify_ok=False), "/in.mp4", S, Category.DAMAGED_INDEX)
+    out = run_agent(llm, registry, StubFt(verify_ok=False), "/in.mp4", s, Category.DAMAGED_INDEX)
     assert out.repaired is False
     assert out.stop_reason == "max_iterations"
-    assert out.iterations == S.agent_max_iterations
+    assert out.iterations == s.agent_max_iterations
+
+
+def test_stops_at_token_budget():
+    # Each round spends 20 tokens; a 10-token budget trips after the first round.
+    s = S.model_copy(update={"agent_token_budget": 10, "agent_max_tool_calls": 1000})
+    responses = [_resp("inspect_bytes", {"n": i}, tokens=20) for i in range(5)]
+    llm = ScriptedLLM(responses)
+    registry = StubRegistry({"inspect_bytes": {"ok": True, "size": 10}})
+    out = run_agent(llm, registry, StubFt(verify_ok=False), "/in.mp4", s, Category.DAMAGED_INDEX)
+    assert out.repaired is False
+    assert out.stop_reason == "token_budget"
+    assert out.iterations == 1
 
 
 def test_wall_clock_guard():

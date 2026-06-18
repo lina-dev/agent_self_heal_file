@@ -1,3 +1,4 @@
+import os
 import shutil
 
 import boto3
@@ -14,7 +15,7 @@ from audio_repair.repair.worker import RepairDeps
 HAS_FFMPEG = shutil.which("ffmpeg") and shutil.which("ffprobe")
 pytestmark = pytest.mark.skipif(not HAS_FFMPEG, reason="ffmpeg not installed")
 
-BUCKET = "eval-bucket"
+BUCKET = os.environ.get("S3_OUTPUT_BUCKET") or "eval-bucket"
 
 
 class FakeSns:

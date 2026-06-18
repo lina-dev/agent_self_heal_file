@@ -1,3 +1,5 @@
+import os
+
 import boto3
 import pytest
 from moto import mock_aws
@@ -8,8 +10,9 @@ from audio_repair.core.s3 import S3Client
 from audio_repair.intake.router import IntakeDeps
 from audio_repair.intake.service import handle_request
 
+ACCOUNT = os.environ.get("AWS_ACCOUNT_ID") or "123456789012"
 IN = "svc-bucket"
-PROC = "arn:aws:sns:us-east-1:123456789012:processing"
+PROC = os.environ.get("PROCESSING_TOPIC_ARN") or f"arn:aws:sns:us-east-1:{ACCOUNT}:processing"
 
 
 class FakeSns:

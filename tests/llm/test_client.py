@@ -82,6 +82,27 @@ def test_tool_spec_to_openai():
     assert d["function"]["name"] == "remux"
 
 
+def test_unconfigured_backend_raises():
+    # No LLM_BASE_URL / LLM_MODEL in the environment -> fail loudly when used.
+    c = LLMClient(env={})
+    with pytest.raises(LLMError, match="LLM backend not configured"):
+        c.complete([{"role": "user", "content": "x"}], [], 64)
+
+
+def test_empty_env_values_treated_as_unset():
+    # Unset GitHub variables render as "" — must not count as configured.
+    c = LLMClient(env={"LLM_BASE_URL": "", "LLM_MODEL": ""})
+    assert c.base_url is None and c.model is None
+
+
+def test_reads_backend_from_env():
+    c = LLMClient(env={"LLM_BASE_URL": "http://vllm:8000/v1",
+                       "LLM_MODEL": "qwen2.5:7b-instruct", "LLM_API_KEY": "sk-x"})
+    assert c.base_url == "http://vllm:8000/v1"
+    assert c.model == "qwen2.5:7b-instruct"
+    assert c.api_key == "sk-x"
+
+
 @pytest.mark.integration
 def test_live_ollama_roundtrip():
     import os

@@ -1,7 +1,6 @@
 """Intake routing (spec §5).
 
-Downloads the candidate, validates it up to `repeat + 1` times (the spec's
-`repeat` is an intake-only retry knob, NOT an agent-loop limit), and routes:
+Downloads the candidate, validates it up to `repeat + x` times, and routes:
 
   * readable                 -> processing topic, status=ok
   * ≥3h / zero-byte/non-media -> processing topic, status=rejected

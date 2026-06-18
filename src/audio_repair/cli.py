@@ -61,6 +61,12 @@ def _build_parser() -> argparse.ArgumentParser:
     p_eval.add_argument("--seed-dir", required=True, help="directory for synthesized seeds")
     p_eval.add_argument("--out-dir", default="eval_out", help="scorecard output directory")
 
+    p_serve = sub.add_parser("serve", help="run a long-polling SQS consumer (ECS service)")
+    p_serve.add_argument("--mode", required=True, choices=["agent", "intake"],
+                         help="agent = repair worker; intake = validation/routing")
+    p_serve.add_argument("--queue-url", default=None,
+                         help="SQS queue url (defaults to $SQS_QUEUE_URL)")
+
     return parser
 
 
@@ -95,6 +101,12 @@ def main(argv: Optional[list[str]] = None) -> int:
         paths = write_scorecard(card, args.out_dir)
         print(json.dumps({"scorecard": paths, "success_rate": card.success_rate,
                           "total": card.total}, indent=2))
+        return 0
+
+    if args.command == "serve":
+        from .service import serve
+
+        serve(args.mode, args.queue_url, settings=settings)
         return 0
 
     parser.print_help()

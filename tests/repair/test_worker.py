@@ -1,3 +1,5 @@
+import os
+
 import boto3
 import pytest
 from moto import mock_aws
@@ -8,14 +10,16 @@ from audio_repair.core.s3 import S3Client
 from audio_repair.llm.client import LLMResponse, ToolCall
 from audio_repair.repair.worker import RepairDeps, handle_sqs_record, repair_file
 
+ACCOUNT = os.environ.get("AWS_ACCOUNT_ID") or "123456789012"
 IN_BUCKET = "in-bucket"
-OUT_BUCKET = "out-bucket"
+OUT_BUCKET = os.environ.get("S3_OUTPUT_BUCKET") or "out-bucket"
+PROC = os.environ.get("PROCESSING_TOPIC_ARN") or f"arn:aws:sns:us-east-1:{ACCOUNT}:processing"
 
 
 def _settings(tmp_path):
     return Settings(
         s3_output_bucket=OUT_BUCKET,
-        processing_topic_arn="arn:aws:sns:us-east-1:123456789012:processing",
+        processing_topic_arn=PROC,
         work_dir=str(tmp_path / "work"),
     )
 

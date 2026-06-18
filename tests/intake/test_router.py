@@ -1,3 +1,5 @@
+import os
+
 import boto3
 import pytest
 from moto import mock_aws
@@ -7,9 +9,12 @@ from audio_repair.core.models import DecodeVerifyResult, ProbeResult, StreamInfo
 from audio_repair.core.s3 import S3Client
 from audio_repair.intake.router import IntakeDeps, route
 
+# Infra identifiers come from the environment (GitHub repo variables in CI);
+# fall back to AWS's documentation dummy account for offline/local runs.
+ACCOUNT = os.environ.get("AWS_ACCOUNT_ID") or "123456789012"
 IN = "intake-bucket"
-PROC = "arn:aws:sns:us-east-1:123456789012:processing"
-REPAIR = "arn:aws:sns:us-east-1:123456789012:repair"
+PROC = os.environ.get("PROCESSING_TOPIC_ARN") or f"arn:aws:sns:us-east-1:{ACCOUNT}:processing"
+REPAIR = os.environ.get("REPAIR_TOPIC_ARN") or f"arn:aws:sns:us-east-1:{ACCOUNT}:repair"
 
 
 def _settings(tmp_path, repeat=1):
